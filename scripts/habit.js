@@ -120,4 +120,16 @@ const savedTheme = localStorage.getItem('theme');
 if (savedTheme) {
     themeSelect.value = savedTheme;
     themeChange();
-}
+} 
+// Weekly progress counters
+let completedCount = 0;
+let streakCount = 0;
+
+function updateWeeklyProgress() {
+    const completed = document.getElementById("completed-count");
+    const streak = document.getElementById("streak-count");
+
+    if (completed) completed.textContent = completedCount;
+    if (streak) streak.textContent = streakCount;
+}  
+updateWeeklyProgress();
