@@ -122,6 +122,7 @@ function addHabits()
     localStorage.setItem('habit',JSON.stringify(exsitingHabit));
     modal.setAttribute('hidden','' );
     document.getElementById('habit-form').reset();
+    renderHabitGrid();
     });
         
 
@@ -169,6 +170,9 @@ function renderHabitGrid()
     const grid =document.getElementById('days-grid');
      if (!grid) return;
 
+    // Clear existing habit rows (keep header and day labels)
+    const habitRows = grid.querySelectorAll('.habit-name, .habit-box');
+    habitRows.forEach(row => row.remove());
 
     const habits = JSON.parse(localStorage.getItem('habit')) || [];
 
@@ -207,6 +211,23 @@ function renderHabitGrid()
     )
 }
 renderHabitGrid();
+
+// Remove Habit
+document.getElementById('remove-btn').addEventListener('click', () => {
+    const habitName = prompt('Enter the habit name to remove:');
+    if (habitName) {
+        const habits = JSON.parse(localStorage.getItem('habit')) || [];
+        // Find the last index with matching name
+        const lastIndex = habits.findLastIndex(h => h.name === habitName);
+        if (lastIndex > -1) {
+            habits.splice(lastIndex, 1);
+            localStorage.setItem('habit', JSON.stringify(habits));
+            renderHabitGrid();
+        } else {
+            alert('Habit not found.');
+        }
+    }
+});
 
 function renderDailyDashboard()
 {

@@ -189,7 +189,7 @@ td, th {
 }
 
 /* Add Habit Button */
-#open-btn {
+#open-btn, #remove-btn {
     margin-top: 12px;
     background: var(--primary);
     color: var(--primary-text);
@@ -200,7 +200,7 @@ td, th {
     font-weight: bold;
 }
 
-#open-modal-btn:hover {
+#open-btn:hover, #remove-btn:hover {
     opacity: 0.85;
 }
 
