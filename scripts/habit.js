@@ -22,6 +22,69 @@ document.getElementById('submit-btn').addEventListener('click', () => {
         usernameContainer.setAttribute('hidden', '');
     }
 });
+
+// Set today's date dynamically
+document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'});
+
+/*
+   Daily Reset Logic - Store completions and reset on new day
+   Weekly Reset Logic - Reset weekly totals every Sunday
+*/
+function checkAndResetDailyTasks() {
+    const today = new Date();
+    const todayString = today.toDateString();
+    const dayIndex = today.getDay();
+    const lastDate = localStorage.getItem('lastDate');
+    const lastWeekStart = localStorage.getItem('lastWeekStart');
+    
+    if (lastDate !== todayString) {
+        // New day detected - store previous day's completions and reset
+        const habits = JSON.parse(localStorage.getItem('habit')) || [];
+        
+        habits.forEach(habit => {
+            // Store today's completion status in history if we had a previous date
+            if (lastDate && habit.completed) {
+                if (!Array.isArray(habit.completionHistory)) {
+                    habit.completionHistory = [];
+                }
+                habit.completionHistory.push({
+                    date: lastDate,
+                    completed: true
+                });
+            }
+            // Reset daily completion status for new day
+            habit.completed = false;
+        });
+        
+        localStorage.setItem('habit', JSON.stringify(habits));
+        localStorage.setItem('lastDate', todayString);
+    }
+    
+    // Check if it's Sunday (dayIndex === 0) - reset weekly counter
+    if (dayIndex === 0 && lastWeekStart !== todayString) {
+        // New week detected - reset weekly completed count
+        const habits = JSON.parse(localStorage.getItem('habit')) || [];
+        const currentWeekTotal = localStorage.getItem('weeklyCompletedTotal') || '0';
+        
+        // Store previous week's total if it exists
+        if (currentWeekTotal !== '0') {
+            let weeklyHistory = JSON.parse(localStorage.getItem('weeklyHistory')) || [];
+            weeklyHistory.push({
+                weekStart: lastWeekStart || 'unknown',
+                completed: parseInt(currentWeekTotal)
+            });
+            localStorage.setItem('weeklyHistory', JSON.stringify(weeklyHistory));
+        }
+        
+        // Reset weekly counter for new week
+        localStorage.setItem('weeklyCompletedTotal', '0');
+        localStorage.setItem('lastWeekStart', todayString);
+    }
+}
+
+// Run check on page load
+checkAndResetDailyTasks();
+
 /*
    Data import and validation 
 */
@@ -183,6 +246,45 @@ if (savedTheme) {
     Progress and calculation 
 */
 
+// Calculate streak based on consecutive days in completionHistory
+function calculateStreak(habit) {
+    if (!Array.isArray(habit.completionHistory) || habit.completionHistory.length === 0) {
+        return 0;
+    }
+    
+    // Convert dates to timestamps for reliable comparison
+    const completedDates = habit.completionHistory
+        .map(entry => {
+            const date = new Date(entry.date);
+            date.setHours(0, 0, 0, 0);
+            return date.getTime();
+        })
+        .sort((a, b) => b - a); // Sort descending (most recent first)
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTime = today.getTime();
+    
+    let streak = 0;
+    const oneDay = 1000 * 60 * 60 * 24; // milliseconds in one day
+    
+    // Check if today is in the completionHistory
+    if (completedDates.includes(todayTime)) {
+        streak = 1;
+        
+        // Count backward from yesterday
+        for (let i = 1; i < completedDates.length; i++) {
+            const expectedDate = todayTime - (i * oneDay);
+            if (completedDates.includes(expectedDate)) {
+                streak++;
+            } else {
+                break;
+            }
+        }
+    }
+    
+    return streak;
+}
 // Weekly progress counters
 function updateWeeklyProgress() {
     const habits = JSON.parse(localStorage.getItem('habit')) || [];
@@ -196,13 +298,16 @@ function updateWeeklyProgress() {
         habit.scheduledDays.includes(dayIndex)
     ).length;
 
-      //highest streak across all habit
-     const maxStreak = habits.reduce((max, habit) => Math.max(max, habit.streak || 0), 0);
+    // Get the weekly total (accumulated throughout the week, resets on Sunday)
+    const weeklyTotal = parseInt(localStorage.getItem('weeklyCompletedTotal')) || 0;
+
+    // Maximum streak across all habits
+    const maxStreak = habits.length > 0 ? habits.reduce((max, habit) => Math.max(max, habit.streak || 0), 0) : 0;
 
     const completed = document.getElementById("completed-count");
     const streak = document.getElementById("streak-count");
 
-    if (completed) completed.textContent = completedToday;
+    if (completed) completed.textContent = weeklyTotal;
     if (streak) streak.textContent = maxStreak ;
 }  
 updateWeeklyProgress();
@@ -321,9 +426,42 @@ function renderDailyDashboard() {
                 const allHabits = JSON.parse(localStorage.getItem('habit')) || [];
                 const target = allHabits.find(h => h.name === habit.name);
                 if (target) {
+                    const wasCompleted = target.completed;
                     target.completed = checkBox.checked;
+                    
+                    // Update completion history for today
+                    if (!Array.isArray(target.completionHistory)) {
+                        target.completionHistory = [];
+                    }
+                    
+                    const todayString = today.toDateString();
+                    const todayEntry = target.completionHistory.find(e => e.date === todayString);
+                    
+                    if (checkBox.checked && !todayEntry) {
+                        // Mark as completed today - increment streak
+                        target.completionHistory.push({
+                            date: todayString,
+                            completed: true
+                        });
+                        target.streak = (target.streak || 0) + 1;
+                    } else if (!checkBox.checked && todayEntry) {
+                        // Remove today's completion - decrement streak
+                        target.completionHistory = target.completionHistory.filter(e => e.date !== todayString);
+                        target.streak = Math.max(0, (target.streak || 0) - 1);
+                    }
+                    
                     localStorage.setItem('habit', JSON.stringify(allHabits));
+                    
+                    // Update weekly total
+                    if (checkBox.checked && !wasCompleted) {
+                        const weeklyTotal = parseInt(localStorage.getItem('weeklyCompletedTotal')) || 0;
+                        localStorage.setItem('weeklyCompletedTotal', (weeklyTotal + 1).toString());
+                    } else if (!checkBox.checked && wasCompleted) {
+                        const weeklyTotal = parseInt(localStorage.getItem('weeklyCompletedTotal')) || 0;
+                        localStorage.setItem('weeklyCompletedTotal', Math.max(0, weeklyTotal - 1).toString());
+                    }
                 }
+                renderDailyDashboard();
                 updateWeeklyProgress();
             });
             checkWrapper.appendChild(checkBox);
@@ -332,7 +470,9 @@ function renderDailyDashboard() {
             // streak cell
             const streakDiv = document.createElement('div');
             streakDiv.className = 'daily-streak';
-            streakDiv.textContent = habit.streak || 0;
+            // Recalculate streak to ensure it's current
+            habit.streak = calculateStreak(habit);
+            streakDiv.textContent = habit.streak;
             dailyTracker.appendChild(streakDiv);
         }
     });
