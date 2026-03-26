@@ -338,7 +338,8 @@ main section {
 }
 .daily-tracker
 {
-    display: flex;
+   display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: 10px;
 }
 #weekly-progress-content {
