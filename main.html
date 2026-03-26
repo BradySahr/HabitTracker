@@ -17,17 +17,19 @@
      <h1 id="main-title">Habit Tracker</h1>
      
      <nav>
-        <a href="#Home">Home </a>
-        <a href="#About">About</a>
-        <a href="#Contact">Contact</a>
-
+        <a href="#daily-dashboard">Home</a>
+        <a href="#habit-library-section">Habits</a>
+        <a href="#weekly-progress">Progress</a>
+        <a href="about.html">About</a>
     </nav>
+   
      
 </header>
 <div id="username-container" hidden>
     <div class="username-card">
         <h2>Welcome to Habit Tracker</h2>
         <p>Enter your name to get started</p>
+        <label for="username">Name</label>
         <input type="text" id="username" placeholder="Your name...">
         <button id="submit-btn">Get Started</button>
     </div>
@@ -54,7 +56,6 @@
             <div id="habit-list">Habit</div>
             <div id="description"> Description</div>
             <div id="done">Done?</div>
-            <input type="checkbox" id="habit-done">
             <div id="streak">Streak</div>
         </div>    
     </section>
